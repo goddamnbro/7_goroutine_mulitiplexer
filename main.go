@@ -2,44 +2,34 @@ package main
 
 import (
 	"fmt"
-	"sync"
 )
 
 func MergeTwoChannels(ch1, ch2 chan int) chan int {
 	to := make(chan int, 100)
 
-	var group sync.WaitGroup
-
-	group.Add(1)
 	go func() {
 		for value := range ch1 {
 			to <- value
 		}
-		group.Done()
 	}()
 
-	group.Add(1)
 	go func() {
 		for value := range ch2 {
 			to <- value
 		}
-		group.Done()
 	}()
 
-	group.Wait()
-	return to
-}
-
-func PrintChannelValues(ch chan int) []int {
-	var values []int
-	for {
-		value, ok := <-ch
-		if !ok {
-			break
+	// I'm not sure about this
+	go func() {
+		for {
+			if len(ch1) == 0 && len(ch2) == 0 {
+				close(to)
+				break
+			}
 		}
-		values = append(values, value)
-	}
-	return values
+	}()
+
+	return to
 }
 
 func main() {
@@ -57,7 +47,13 @@ func main() {
 	}()
 
 	mergedCh := MergeTwoChannels(fromCh1, fromCh2)
-	close(mergedCh)
 
-	fmt.Println("-->", PrintChannelValues(mergedCh))
+	// just printing
+	for {
+		value, ok := <-mergedCh
+		if !ok {
+			break
+		}
+		fmt.Println(value)
+	}
 }
