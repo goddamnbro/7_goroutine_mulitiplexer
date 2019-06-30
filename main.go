@@ -2,31 +2,36 @@ package main
 
 import (
 	"fmt"
+	"sync"
 )
 
 func MergeTwoChannels(ch1, ch2 chan int) chan int {
 	to := make(chan int, 100)
 
+	var group sync.WaitGroup
+
+	// reading from 1st chan
+	group.Add(1)
 	go func() {
 		for value := range ch1 {
 			to <- value
 		}
+		group.Done()
 	}()
 
+	// reading from 2nd chan
+	group.Add(1)
 	go func() {
 		for value := range ch2 {
 			to <- value
 		}
+		group.Done()
 	}()
 
-	// I'm not sure about this
+	// just waiting for finishing other goroutines
 	go func() {
-		for {
-			if len(ch1) == 0 && len(ch2) == 0 {
-				close(to)
-				break
-			}
-		}
+		group.Wait()
+		close(to)
 	}()
 
 	return to
